@@ -21,6 +21,25 @@ def clear_csv(filepath):
   f = open(filepath, "w+")
   f.close()
 
+def save_to_csv(df):
+  SAVE_PATH = os.path.join(os.path.dirname(__file__), 'extracted_features.csv')
+  file_exists = os.path.exists(SAVE_PATH)
+  
+  df_copy = df.copy()
+  df_copy['flow_id'] = 0
+  df_copy['label'] = 0
+
+  other_columns = [col for col in df_copy.columns if col not in ['flow_id', 'label']]
+  ordered_columns = ['flow_id', 'label'] + other_columns
+  df_ordered = df_copy[ordered_columns]
+
+  df_ordered.to_csv(
+    SAVE_PATH,
+    mode='a',          # CRITICAL: 'a' stands for append
+    header=not file_exists, # Write header ONLY if the file is new
+    index=False        # Don't write the DataFrame row index
+  )
+
 def extract_data(df):
   iat_threshold = 0.1
 
@@ -34,6 +53,8 @@ def extract_data(df):
   cv_iat = cv_iat_raw if avg_iat != 0 else 0
   cv_iat = np.nan_to_num(cv_iat, nan=0.0, posinf=0.0, neginf=0.0)
   burst_ratio = ((df['flow_iat_mean']/df['flow_duration'] < iat_threshold).sum())/len(df)
+  small_packet_ratio = ((df['pkt_len_mean'] < 100).sum())/len(df) #small packet ratio
+  large_packet_ratio = ((df['pkt_len_mean'] > 1000).sum())/len(df) #large packet ratio
   packet_rate = df['flow_pkts_s'].sum()/len(df)  #packet rate
   byte_rate = df['flow_byts_s'].sum()/len(df)  #byte rate
 
@@ -46,6 +67,8 @@ def extract_data(df):
     'std_iat': [std_iat],
     'cv_iat': [cv_iat],
     'burst_ratio': [burst_ratio],
+    'small_packet_ratio': [small_packet_ratio],
+    'large_packet_ratio': [large_packet_ratio],
     'packet_rate': [packet_rate],
     'byte_rate': [byte_rate]
   }
@@ -59,6 +82,8 @@ def monitor():
   RF_FILE_PATH = os.path.join(os.path.dirname(__file__), 'rf.joblib')
   SVM_FILE_PATH = os.path.join(os.path.dirname(__file__), 'svm.joblib')
 
+  pd.set_option('display.max_columns', 100)
+
   try:
     loaded_scaler = joblib.load(SCALER_FILE_PATH)
     loaded_rf = joblib.load(RF_FILE_PATH)
@@ -71,13 +96,13 @@ def monitor():
       # Read all new content from the current file position
       try:
         df = pd.read_csv(CSV_FILE_PATH).dropna(how='all').drop_duplicates()
-
         #clear csv for next batch
         df_header_only = df.iloc[0:0]
         df_header_only.to_csv(CSV_FILE_PATH, index=False)
-
+        
         if len(df) > 0:
-          feature_df = extract_data(df)  
+          feature_df = extract_data(df) 
+          save_to_csv(feature_df) 
           X_new_scaled = loaded_scaler.transform(feature_df)
           rf_pred = loaded_rf.predict(X_new_scaled)[0]
           rf_proba = loaded_rf.predict_proba(X_new_scaled)[0, 1]
