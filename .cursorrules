@@ -59,7 +59,6 @@ source venv/bin/activate
 
 ### Code Style
 - Python 3.8+, PEP 8
-- Type hints for public functions
 - Docstrings for all functions
 - Concise, no redundancy
 

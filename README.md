@@ -25,8 +25,17 @@ python3 models/augment_dataset.py
 # 5. Train models
 python3 train_models.py --augmented
 
-# 6. Start monitoring
+# 6. Start monitoring (choose one):
+#    Option A: Local monitoring (single machine)
 cd monitor && ./app.sh
+
+#    Option B: Distributed monitoring (multiple devices)
+#    On central server:
+cd web && ./run.sh
+
+#    On each device:
+export ASTRA_API_URL=http://server-ip:3000
+python3 web/agent.py
 ```
 
 ## Architecture
@@ -140,6 +149,7 @@ python3 train_models.py --augmented
 
 ## Real-time Monitoring
 
+### Local Mode (Single Machine)
 The monitor system:
 1. Captures packets with CICFlowMeter
 2. Extracts features every 10 seconds
@@ -150,6 +160,64 @@ Configure network interface in `monitor/app.sh`:
 ```bash
 INTERFACE="Wi-Fi"  # Or "en0", "eth0", etc.
 ```
+
+### Distributed Mode (Multiple Devices)
+
+**Architecture**:
+```
+Device 1 → Agent → Central Server (API + Inference)
+Device 2 → Agent → Central Server (API + Inference)
+Device N → Agent → Central Server (API + Inference)
+                      ↓
+                  Dashboard (Web UI)
+```
+
+**Setup**:
+
+1. **Central Server** (runs API + inference):
+```bash
+cd web && ./run.sh
+# Server starts on http://localhost:3000
+```
+
+2. **Each Device** (runs agent):
+```bash
+# Install dependencies
+pip install requests
+
+# Configure
+export ASTRA_API_URL=http://your-server-ip:3000
+export DEVICE_ID=device-001  # Optional, auto-generated
+
+# Run agent (reads from monitor/flows.csv)
+python3 web/agent.py
+```
+
+**API Endpoints**:
+- `POST /api/flows` - Device sends flow data
+- `GET /api/detections` - Get recent detections
+- `GET /api/statistics` - Get detection stats
+- `GET /api/devices` - List monitored devices
+
+**Data Flow**:
+1. Device: CICFlowMeter → `flows.csv`
+2. Device: Agent extracts features → POST to `/api/flows`
+3. Server: Runs inference (RF + SVM) → Stores in SQLite
+4. Dashboard: Visualizes detections and statistics
+
+**Web Dashboard** (React + Vite):
+```bash
+cd web/dashboard
+npm install
+npm run dev
+# Dashboard runs on http://localhost:5173
+```
+
+The dashboard displays:
+- Real-time statistics (total flows, benign/malicious counts)
+- Device list with activity status
+- Recent detections table with RF/SVM predictions
+- Auto-refreshes every 5 seconds
 
 ## Development
 
