@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# chmod +x app.sh
+# ./app.sh
+
 INTERFACE="Wi-Fi"
 CSV_FILE="flows.csv"
 PYTHON_SCRIPT="flow_inference.py"

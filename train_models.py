@@ -11,7 +11,7 @@ from sklearn.svm import SVC
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 
 
-def train_models(use_augmented=False):
+def train_models(use_augmented=False, use_additional_features=False):
     """Train and save models."""
     print("=" * 60)
     print("CRYPTOMINING DETECTION - MODEL TRAINING")
@@ -27,8 +27,15 @@ def train_models(use_augmented=False):
         if not data_path.exists():
             print("Error: Processed dataset not found")
             return
-    
+    print(use_additional_features)
+    if use_additional_features:
+        additional_features_path = Path('monitor/extracted_features.csv')
+        if not additional_features_path.exists():
+            print("Error: Processed dataset not found")
+            return
+
     df = pd.read_csv(data_path)
+    
     print(f"{'Augmented' if use_augmented else 'Original'} dataset: {len(df)} flows")
     print(f"Split: {(df['label']==0).sum()} benign, {(df['label']==1).sum()} malicious")
     
@@ -36,7 +43,7 @@ def train_models(use_augmented=False):
                     'std_packet_size', 'avg_iat', 'std_iat', 'cv_iat', 'burst_ratio', 
                     'small_packet_ratio', 'large_packet_ratio', 'packet_rate', 'byte_rate']
     
-    if 'source_id' in df.columns:
+    if 'source_id' in df.columns and not use_additional_features:
         unique_sources = df['source_id'].unique()
         np.random.seed(42)
         np.random.shuffle(unique_sources)
@@ -50,7 +57,7 @@ def train_models(use_augmented=False):
         
         X = df[feature_cols].fillna(0).replace([np.inf, -np.inf], [1e10, -1e10])
         y = df['label']
-        
+
         X_train = X[train_mask]
         X_test = X[test_mask]
         y_train = y[train_mask]
@@ -62,6 +69,15 @@ def train_models(use_augmented=False):
     else:
         X = df[feature_cols].fillna(0).replace([np.inf, -np.inf], [1e10, -1e10])
         y = df['label']
+
+        if use_additional_features:
+            add_feat_df = pd.read_csv(additional_features_path)
+            X_add_feat = add_feat_df[feature_cols].fillna(0).replace([np.inf, -np.inf], [1e10, -1e10])
+            y_add_feat = add_feat_df['label']
+
+            X = pd.concat([X, X_add_feat], ignore_index=True)
+            y = pd.concat([y, y_add_feat], ignore_index=True)
+
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y
         )
@@ -126,5 +142,6 @@ def train_models(use_augmented=False):
 if __name__ == "__main__":
     import sys
     use_augmented = '--augmented' in sys.argv
-    train_models(use_augmented=use_augmented)
+    use_additional_features = '--add' in sys.argv
+    train_models(use_augmented=use_augmented,use_additional_features=use_additional_features)
 

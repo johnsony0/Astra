@@ -26,6 +26,7 @@ def extract_data(df):
   total_packets = (df['tot_fwd_pkts']+df['tot_bwd_pkts']).sum()
   total_bytes = (df['totlen_fwd_pkts']+df['totlen_bwd_pkts']).sum()
   avg_packet_size = df['pkt_len_mean'].sum()/len(df)
+  std_packet_size = df['pkt_len_std'].sum()/len(df)
   avg_iat = df['flow_iat_mean'].sum()/len(df)
   std_iat = df['flow_iat_std'].sum()/len(df)
   cv_iat = np.nan_to_num(std_iat/avg_iat if avg_iat != 0 else 0, nan=0.0, posinf=0.0, neginf=0.0)
@@ -37,7 +38,7 @@ def extract_data(df):
 
   return pd.DataFrame({
     'duration': [duration], 'total_packets': [total_packets], 'total_bytes': [total_bytes],
-    'avg_packet_size': [avg_packet_size], 'avg_iat': [avg_iat], 'std_iat': [std_iat],
+    'avg_packet_size': [avg_packet_size], 'std_packet_size': [std_packet_size], 'avg_iat': [avg_iat], 'std_iat': [std_iat],
     'cv_iat': [cv_iat], 'burst_ratio': [burst_ratio], 'small_packet_ratio': [small_packet_ratio],
     'large_packet_ratio': [large_packet_ratio], 'packet_rate': [packet_rate], 'byte_rate': [byte_rate]
   })
@@ -53,6 +54,7 @@ def monitor():
     loaded_rf = joblib.load(RF_FILE_PATH)
     loaded_svm = joblib.load(SVM_FILE_PATH)
   except:
+    print(e)
     return
   
   try:
@@ -65,13 +67,14 @@ def monitor():
           feature_df = extract_data(df)
           save_to_csv(feature_df)
           X_scaled = loaded_scaler.transform(feature_df)
-          rf_pred, rf_proba = loaded_rf.predict(X_scaled)[0], loaded_rf.predict_proba(X_scaled)[0, 1]
-          svm_pred, svm_proba = loaded_svm.predict(X_scaled)[0], loaded_svm.predict_proba(X_scaled)[0, 1]
-          print(f"\nRF: {'MALICIOUS' if rf_pred == 1 else 'NORMAL'} ({rf_proba:.4f})")
-          print(f"SVM: {'MALICIOUS' if svm_pred == 1 else 'NORMAL'} ({svm_proba:.4f})")
+          rf_pred, rf_proba_0, rf_proba_1, = loaded_rf.predict(X_scaled)[0], loaded_rf.predict_proba(X_scaled)[0, 0], loaded_rf.predict_proba(X_scaled)[0, 1]
+          svm_pred, svm_proba_0, svm_proba_1 = loaded_svm.predict(X_scaled)[0], loaded_svm.predict_proba(X_scaled)[0, 0], loaded_svm.predict_proba(X_scaled)[0, 1]
+          print(f"RF: {f'MALICIOUS ({rf_proba_1:.4f})' if rf_pred == 1 else f'NORMAL ({rf_proba_0:.4f})'}")
+          print(f"SVM: {f'MALICIOUS ({svm_proba_1:.4f})' if svm_pred == 1 else f'NORMAL ({svm_proba_0:.4f})'}\n")
       except pd.errors.EmptyDataError:
         pass
       except Exception as e:
+        print(e)
         time.sleep(10)
       time.sleep(10)
   except KeyboardInterrupt:
