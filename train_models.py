@@ -27,7 +27,7 @@ def train_models(use_augmented=False, use_additional_features=False):
         if not data_path.exists():
             print("Error: Processed dataset not found")
             return
-    print(use_additional_features)
+
     if use_additional_features:
         additional_features_path = Path('monitor/extracted_features.csv')
         if not additional_features_path.exists():
