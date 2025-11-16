@@ -93,7 +93,8 @@ def train_models(use_augmented=False, use_additional_features=False):
         max_depth=10,
         min_samples_split=5,
         random_state=42,
-        n_jobs=-1
+        n_jobs=-1,
+        class_weight='balanced'
     )
     rf.fit(X_train_scaled, y_train)
     
@@ -103,12 +104,14 @@ def train_models(use_augmented=False, use_additional_features=False):
     
     print("=" * 60)
     print("SVM")
+    #can increase accuracy through increasing C value
     svm = SVC(
         kernel='rbf',
         C=1.0,
         gamma='scale',
         probability=True,
-        random_state=42
+        random_state=42,
+        class_weight='balanced'
     )
     svm.fit(X_train_scaled, y_train)
     
@@ -125,10 +128,6 @@ def train_models(use_augmented=False, use_additional_features=False):
     print(importances.head())
     
     print("=" * 60)
-    monitor_dir = Path('monitor')
-    joblib.dump(scaler, monitor_dir / 'scaler.joblib')
-    joblib.dump(rf, monitor_dir / 'rf.joblib')
-    joblib.dump(svm, monitor_dir / 'svm.joblib')
     
     models_dir = Path('models')
     models_dir.mkdir(exist_ok=True)
@@ -136,7 +135,7 @@ def train_models(use_augmented=False, use_additional_features=False):
     joblib.dump(rf, models_dir / 'rf_v1.joblib')
     joblib.dump(svm, models_dir / 'svm_v1.joblib')
     
-    print(f"✓ Saved to {monitor_dir}/ and {models_dir}/")
+    print(f"✓ Saved to {models_dir}/")
 
 
 if __name__ == "__main__":

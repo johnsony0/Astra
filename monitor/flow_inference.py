@@ -76,7 +76,7 @@ def monitor():
     while True:
       try:
         df = pd.read_csv(CSV_FILE_PATH).dropna(how='all').drop_duplicates()
-        #df.iloc[0:0].to_csv(CSV_FILE_PATH, index=False)
+        df.iloc[0:0].to_csv(CSV_FILE_PATH, index=False)
         
         if len(df) > 0:
           feature_dict = extract_data(df)
