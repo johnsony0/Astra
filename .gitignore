@@ -1,4 +1,4 @@
-kaggle.json
+kagggle.json
 dataset/
 # Python
 __pycache__/
@@ -47,4 +47,15 @@ htmlcov/
 # Mac/Linux/Windows OS files
 .DS_Store
 Thumbs.db
+
+# Generated files
+*.pdf
+*.joblib
+flows.csv
+*.bbl
+*.blg
+*.aux
+*.out
+*.synctex.gz
+*.log
 
